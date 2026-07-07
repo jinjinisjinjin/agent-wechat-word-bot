@@ -1,0 +1,7 @@
+# 微信单词机器人依赖清单
+# 安装：pip install -r requirements.txt
+# 注意：本机 Python 为 3.8.x，下列版本均已兼容 3.8
+
+flask>=2.2          # Web 服务（接收 cc-weixin webhook）
+requests>=2.25      # 调用 Free Dictionary API
+schedule>=1.1.0     # 定时任务（每日复习 / 每周周报）
