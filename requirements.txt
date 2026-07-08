@@ -1,6 +1,7 @@
 # 微信单词机器人依赖清单
-# 安装：pip install -r requirements.txt
-# 注意：本机 Python 为 3.8.x，下列版本均已兼容 3.8
+# 注意：云端版已将这些依赖预装进 lib/ 目录（cp39-manylinux wheel），
+# 由 scf_bootstrap 通过 PYTHONPATH=/var/user/lib 引入，无需云端 pip 安装。
+# 本地部署时仍需：pip install -r requirements.txt
 
 flask>=2.2          # Web 服务（接收 cc-weixin webhook）
 requests>=2.25      # 调用 Free Dictionary API
