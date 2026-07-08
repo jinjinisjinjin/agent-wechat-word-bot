@@ -97,12 +97,14 @@ def _is_source_query(text):
 def _build_source_info():
     """返回源码获取方式与简明安装步骤。"""
     repo = "https://github.com/jinjinisjinjin/agent-wechat-word-bot"
+    release_zip = "https://github.com/jinjinisjinjin/agent-wechat-word-bot/releases/download/v1.0.0/WeChat-word-bot.zip"
     steps = [
         "📦 单词机器人 · 开源代码",
-        f"GitHub 仓库：{repo}",
+        f"一键下载（含全部源码）：{release_zip}",
+        f"GitHub 仓库（含完整说明）：{repo}",
         "",
         "本地安装步骤：",
-        "1. 克隆：git clone " + repo,
+        "1. 下载并解压 WeChat-word-bot.zip",
         "2. 装依赖：pip install -r requirements.txt",
         "3. 配置：复制 .env.example 为 .env，填入你的公众号 Token/AppID",
         "4. 启动：python3 main.py（默认监听 9090 端口）",
