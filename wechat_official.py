@@ -32,15 +32,18 @@ MP_APPSECRET = os.environ.get("MP_APPSECRET", "")
 MP_CALLBACK_PATH = os.environ.get("MP_CALLBACK_PATH", "/wechat")
 
 _BASE = os.path.dirname(os.path.abspath(__file__))
+# 云端（腾讯云 SCF 等）只有 /tmp 可写，用 DATA_DIR 重定向持久化文件；
+# 本地不设置 DATA_DIR 时退回到代码目录（与原行为一致）。
+_DATA_DIR = os.environ.get("DATA_DIR", _BASE)
 
 # access_token 缓存（内存 + 文件，避免每次请求都去换）
 _access_token = None
 _access_token_expire = 0
-_token_cache_file = os.path.join(_BASE, "mp_token.json")
+_token_cache_file = os.path.join(_DATA_DIR, "mp_token.json")
 _token_lock = threading.Lock()
 
 # 已互动用户 OpenID 记录（供定时任务主动推送，如每日复习 / 周报）
-_subscribers_file = os.path.join(_BASE, "mp_subscribers.json")
+_subscribers_file = os.path.join(_DATA_DIR, "mp_subscribers.json")
 _subs_lock = threading.Lock()
 
 # 客服消息权限标记：未认证订阅号等无权限的账号，命中一次后自动停用主动推送，避免每日刷屏报错
@@ -104,7 +107,7 @@ def verify_get(signature, timestamp, nonce, echostr):
             f"  校验结果        = {'通过' if ok else '失败'}\n"
             f"{'='*50}\n"
         )
-        with open(os.path.join(_BASE, "wechat_verify.log"), "a", encoding="utf-8") as f:
+        with open(os.path.join(_DATA_DIR, "wechat_verify.log"), "a", encoding="utf-8") as f:
             f.write(log_line)
     except Exception:
         pass

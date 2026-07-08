@@ -26,8 +26,13 @@ import json
 import os
 from datetime import datetime, timedelta
 
-# 数据文件路径：用户主目录下的 word_history.json
-DATA_FILE = os.path.expanduser("~/word_history.json")
+# 数据文件路径：默认用户主目录下的 word_history.json
+# 云端（腾讯云 SCF 等）只有 /tmp 可写，可通过环境变量 DATA_DIR 重定向
+_DATA_DIR = os.environ.get("DATA_DIR")
+if _DATA_DIR:
+    DATA_FILE = os.path.join(_DATA_DIR, "word_history.json")
+else:
+    DATA_FILE = os.path.expanduser("~/word_history.json")
 
 # 复习间隔（天）：第 1、2、4、7、15 天
 REVIEW_INTERVALS = [1, 2, 4, 7, 15]

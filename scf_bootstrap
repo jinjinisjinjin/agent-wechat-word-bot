@@ -1,0 +1,22 @@
+#!/bin/bash
+# 腾讯云 SCF Web 函数启动脚本
+# - Web Server 必须监听 9000 端口（平台转发）
+# - 只有 /tmp 可写，用 DATA_DIR=/tmp 重定向持久化文件
+# - 依赖安装到 /tmp/dep（镜像源加速），并通过 PYTHONPATH 引入
+export PORT=9000
+export DATA_DIR=/tmp
+
+PY=/var/lang/python39/bin/python3.9
+[ -x "$PY" ] || PY=/var/lang/python310/bin/python3.10
+[ -x "$PY" ] || PY=/var/lang/python3/bin/python3
+
+echo "[scf_bootstrap] 使用 Python: $PY"
+
+# 安装依赖到 /tmp/dep（腾讯云镜像，纯 Python 包，无需编译）
+"$PY" -m pip install -r requirements.txt \
+  -i https://mirrors.tencent.com/pypi/simple/ \
+  --target /tmp/dep -q
+export PYTHONPATH=/tmp/dep:$PYTHONPATH
+
+echo "[scf_bootstrap] 依赖就绪，启动 main.py (监听 0.0.0.0:$PORT)"
+exec "$PY" main.py
