@@ -22,3 +22,11 @@ bot.error.log
 # 注意：word_history.json（学习记录）默认入库；
 # 若不想提交数据，取消下一行注释：
 # word_history.json
+
+# ===== 微信公众号运行时状态（含 access_token 缓存与用户 OpenID，不入库） =====
+mp_token.json
+mp_subscribers.json
+
+# ===== 本地配置（含密钥，绝不入库） =====
+.env
+.env.local

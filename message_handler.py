@@ -2,7 +2,7 @@
 message_handler.py — 消息处理模块
 
 接收来自微信（经 cc-weixin 转发到 Flask /webhook）的文本消息，并分发处理：
-- "/stats" 或 "统计"  → 统计查询
+- "统计"/"进度"/"战绩"/"背了多少"  → 统计查询（多种自然触发）
 - 单个字母 A/B/C/D    → 测验答题判断
 - 含中文的文本        → 中文查词（先中译英，再用英文查词典）
 - 其它文本（英文）    → 查词请求，查词后记录并返回结果
@@ -42,6 +42,26 @@ def _format_from_record(rec):
     })
 
 
+# 统计查询触发词：保留 /stats 与「统计」，并补充更自然的口语表达
+_STATS_EXACT = {
+    "/stats", "stats", "统计", "进度", "我的进度",
+    "战绩", "成绩", "成绩单", "总结", "回顾",
+    "学习情况", "学到了什么", "学习报告", "我学了啥",
+}
+_STATS_SUBSTR = (
+    "背了多少", "记了多少", "学了多少", "掌握多少", "多少词",
+    "多少个", "学得怎样", "学得怎么样", "怎么样了", "我的单词",
+)
+
+
+def _is_stats_query(text):
+    """判断用户是否想查看学习统计（兼容命令式与自然口语）。"""
+    t = text.strip().lower()
+    if t in _STATS_EXACT:
+        return True
+    return any(k in text for k in _STATS_SUBSTR)
+
+
 def _build_stats():
     """生成统计文本：总词数、待复习数、高频词 Top3。"""
     total = history_manager.get_total_words()
@@ -55,6 +75,42 @@ def _build_stats():
     else:
         lines.append("高频词 Top3：暂无")
     return "\n".join(lines)
+
+
+# 源码/安装指引触发词
+_SOURCE_EXACT = {
+    "代码", "源码", "项目", "项目地址", "github", "开源",
+    "安装", "怎么安装", "如何安装", "怎么部署", "如何部署",
+    "自己部署", "自己搭建", "获取代码", "搭建教程",
+}
+_SOURCE_SUBSTR = ("怎么装", "如何装", "自己装", "自己用", "部署教程", "安装教程")
+
+
+def _is_source_query(text):
+    """判断用户是否想获取源码 / 安装指引。"""
+    t = text.strip().lower()
+    if t in _SOURCE_EXACT:
+        return True
+    return any(k in text for k in _SOURCE_SUBSTR)
+
+
+def _build_source_info():
+    """返回源码获取方式与简明安装步骤。"""
+    repo = "https://github.com/jinjinisjinjin/agent-wechat-word-bot"
+    steps = [
+        "📦 单词机器人 · 开源代码",
+        f"GitHub 仓库：{repo}",
+        "",
+        "本地安装步骤：",
+        "1. 克隆：git clone " + repo,
+        "2. 装依赖：pip install -r requirements.txt",
+        "3. 配置：复制 .env.example 为 .env，填入你的公众号 Token/AppID",
+        "4. 启动：python3 main.py（默认监听 9090 端口）",
+        "5. 公众号接入：服务器配置 URL 填 http://你的域名/wechat，选明文模式",
+        "",
+        "💡 个人微信用法见 README；推送类功能需认证服务号。",
+    ]
+    return "\n".join(steps)
 
 
 def _save_and_reply(result, header=""):
@@ -107,11 +163,15 @@ def handle_text(user_id, text):
     """
     text = (text or "").strip()
     if not text:
-        return "请输入英文单词，或发送 /stats 查看统计。"
+        return "请输入英文单词，或发送「统计」「进度」查看学习情况。"
 
-    # 统计查询
-    if text.lower() in ("/stats", "统计"):
+    # 统计查询（支持自然口语触发，不局限于 /stats）
+    if _is_stats_query(text):
         return _build_stats()
+
+    # 源码 / 安装指引
+    if _is_source_query(text):
+        return _build_source_info()
 
     # 测验答题（单个字母 A/B/C/D，忽略大小写）
     if len(text) == 1 and text.upper() in ("A", "B", "C", "D"):

@@ -14,15 +14,13 @@ main.py — 主入口
 import os
 import json
 import threading
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 
-import history_manager
-import message_handler
-import scheduler
 
 def _load_dotenv():
     """极简 .env 加载（不引入额外依赖），仅设置尚未存在的环境变量。"""
     p = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    print(f"[env_debug] 正在加载 .env，路径={p}，存在={os.path.exists(p)}", flush=True)
     if os.path.exists(p):
         with open(p, encoding="utf-8") as f:
             for line in f:
@@ -31,9 +29,16 @@ def _load_dotenv():
                     continue
                 k, v = line.split("=", 1)
                 os.environ.setdefault(k.strip(), v.strip())
+        print(f"[env_debug] .env 加载完成，MP_TOKEN={'✅ ' + os.environ.get('MP_TOKEN', '')[:8] + '...' if os.environ.get('MP_TOKEN') else '❌'}", flush=True)
 
 
+# ⚠️ 必须在 import wechat_official 之前加载 .env，否则模块级变量 MP_TOKEN 为空！
 _load_dotenv()
+
+import history_manager
+import message_handler
+import scheduler
+import wechat_official
 
 app = Flask(__name__)
 HISTORY_FILE = history_manager.DATA_FILE
@@ -52,11 +57,16 @@ def ensure_history_file():
 def send_weixin(text):
     """向微信发送消息（主动推送，如每日复习 / 周报）。
 
-    注意：当前为本地占位实现（打印到控制台）。
-    在第四步接入 cc-weixin 后，可在此调用 cc-weixin 提供的发送接口，
-    例如通过本地 HTTP 调用 cc-weixin 的推送端点。
+    通道由环境变量 WECHAT_CHANNEL 决定：
+    - personal（默认）：cc-weixin 个人微信，当前为占位打印（cc-weixin 桥接走 /webhook 被动收发）
+    - official：微信公众号，通过客服消息接口推送给所有互动过的用户
     """
-    print("[weixin] 待发送消息：\n" + text)
+    channel = os.environ.get("WECHAT_CHANNEL", "personal")
+    if channel == "official":
+        sent = wechat_official.push_to_all(text)
+        print(f"[weixin] 公众号客服消息已推送 {sent} 人")
+    else:
+        print("[weixin] 待发送消息：\n" + text)
 
 
 # 将发送器注入 scheduler，供定时任务使用
@@ -90,6 +100,34 @@ def webhook():
     except Exception as e:
         print(f"[webhook] 内部错误: {e}", flush=True)
         return jsonify({"status": "error", "reply": f"⚠️ 机器人内部错误：{str(e)}"}), 500
+
+
+@app.route("/wechat", methods=["GET", "POST"])
+def wechat_official_endpoint():
+    """微信公众号回调入口（测试号 / 订阅号）。
+
+    GET：微信服务器接入验证（Token 校验），返回 echostr 完成握手。
+    POST：接收用户消息（XML 明文模式），处理后返回 XML 被动回复。
+    """
+    if request.method == "GET":
+        signature = request.args.get("signature", "")
+        timestamp = request.args.get("timestamp", "")
+        nonce = request.args.get("nonce", "")
+        echostr = request.args.get("echostr", "")
+        return wechat_official.verify_get(signature, timestamp, nonce, echostr)
+
+    # POST：接收并回复用户消息
+    try:
+        xml_str = request.get_data(as_text=True)
+        reply = wechat_official.handle_update(xml_str)
+        # 空回复或 "success" 表示不回复；否则返回 XML（指定 text/xml 避免微信解析失败）
+        if reply in ("", "success"):
+            return Response(reply, mimetype="text/plain")
+        return Response(reply, mimetype="text/xml")
+    except Exception as e:
+        print(f"[wechat] 处理异常: {e}", flush=True)
+        # 任何异常都必须返回 success，否则微信会重试
+        return Response("success", mimetype="text/plain")
 
 
 @app.route("/", methods=["GET"])
