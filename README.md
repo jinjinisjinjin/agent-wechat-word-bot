@@ -281,3 +281,4 @@ A：多半是依赖没装好（SCF 自带 pip 坏）或 urllib3 版本不兼容 
 - [README-踩坑记录.md](README-踩坑记录.md) — 从打包、上云到密钥轮换的全部踩坑记录
 - [WECHAT_OFFICIAL_SETUP.md](WECHAT_OFFICIAL_SETUP.md) — 公众号后台配置步骤
 - [GitHub上传方法.md](GitHub上传方法.md) — 免密码（钥匙串取 token）上传文件到 GitHub 的方法
+- [skills/github-keychain-upload/SKILL.md](skills/github-keychain-upload/SKILL.md) — 上述方法的技能化版本（供 AI 直接调用）
